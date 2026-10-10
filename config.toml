@@ -1,23 +1,46 @@
+# proxy-farm — konfigurasi bot
+
 [database]
 path = "/home/zzdree/.9router/db/data.sqlite"
 backup_dir = "backups"
 keep_backups = 10
 
 [farm]
-# Batas aman supaya satu sesi tak menarik seluruh internet.
 max_candidates = 8000
-# Kandidat yang lolos dedup sebelum diuji.
 concurrency = 250
 connect_timeout = 4.0
-# Hentikan farm kalau sumber hidup kurang dari ini (0 = tak ada ambang).
-min_sources_alive = 1
+
+# Uji satu proxy sungguhan. Endpoint memakai HTTP, bukan HTTPS: proxy HTTP
+# biasa tidak bisa melakukan CONNECT TLS, jadi HTTPS selalu gagal dengan
+# WRONG_VERSION_NUMBER walau proxynya sehat.
+#
+# Cuma SATU endpoint yang dipakai. Setiap proxy yang mati akan habis
+# timeout penuh per endpoint, jadi 3 endpoint berarti proxy mati menelan
+# 3x waktu — itu yang membuat recheck ribuan baris jadi berjam-jam.
+# Satu endpoint cukup: kalau yang ini tidak bisa dihubungi, proxy sudah
+# tidak layak.
+exit_ip_endpoints = ["http://api.ipify.org"]
+# Berapa proxy tercepat yang diuji mendalam (exit-IP). Membatasi beban
+# ke endpoint uji dan mengganti uji mendalam dengan uji TCP untuk sisanya.
+deep_test_top_n = 800
+deep_test_timeout = 6.0
+
+# Proxy yang gagal uji: beri tenggat (strike) sebelum dihapus, karena
+# proxy gratis memang flaky. 2 = salah pada 2 run berturut-turut baru dibuang.
+grace_strikes = 2
 
 [test]
-# "tcp" = cek koneksi TCP saja: cepat, tak mengirim data ke mana pun.
-# "exitip" = akan diimplementasikan: cek exit IP + kebocoran.
-mode = "tcp"
+mode = "deep"          # deep = TCP + exit-IP (untuk tercepat); tcp = TCP saja
+
+[scope]
+# RUANG AMAN: vercel & cloudflare TIDAK PERNAH disentuh (read-only).
+# Semua recheck/prune hanya berlaku pada type=http (custom + hasil farm).
+recheck_types = ["http"]
+prune_types = ["http"]
+# Hanya baris bertanda `importedSource` (milik tool) yang boleh dihapus.
+# Baris custom pertamamu yang tak bertanda itu dipertahankan.
+only_prune_owned = true
 
 [order]
-# Semua hasil farm bertipe "http" dan harus tampil paling atas
-# (9router mengurutkan proxyPools oleh updatedAt menurun).
-keep_custom_on_top = true
+# Susunan daftar di dashboard: custom (paling atas) -> vercel -> cloudflare
+groups = ["http", "vercel", "cloudflare"]
