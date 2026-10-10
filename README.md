@@ -1,102 +1,115 @@
-# zzproxy-farm
+# proxy-farm
 
-Auto-farm proxy publik → uji → inject ke DB 9router, dengan laporan tiap sesi.
+Bot satu klik: kumpulkan proxy publik dari 10 sumber, **recheck** yang sudah
+ada di DB 9router, **buang yang mati**, naikkan yang hidup, dan rapikan
+tampilannya.
 
-> **Peringatan keamanan.** Proxy publik berarti operatornya bisa melihat lalu lintas
-> yang melewatinya. Jangan pernah mengarahkan mereka ke request yang membawa API key
-> provider, token, atau isi prompt dari skripsi. Lihat [Keamanan](#keamanan).
+> **Peringatan.** Proxy publik berarti operatornya bisa membaca lalu lintas yang
+> melewatinya. Jangan mengarahkannya ke request yang membawa API key provider,
+> token, atau isi prompt skripsi.
 
-## Cara pakai
+## Pakai (1 klik)
+
+Ada ikon **Proxy Farm** di Desktop. Klik ganda → pilih menu:
+
+| pilih | apa yang terjadi |
+|---|---|
+| **1** | farm penuh — recheck semua baris lama, uji kandidat baru, buang yang mati, inject yang hidup |
+| **2** | dry-run — jalankan semua uji, DB **tidak disentuh**. Buat lihat hasil sebelum berkomitmen |
+| **3** | cuma reorder — susun tampilan di 9router tanpa farm apa pun |
+
+Atau dari terminal:
 
 ```bash
-pip install -r requirements.txt
-
-# Lihat dulu tanpa menulis apa pun (juara fitur)
-python3 farm.py --dry-run
-
-# Farm + uji TCP + inject ke DB 9router
-python3 farm.py
-
-# Uji lebih dalam (sudah jadi parameter, lihat catatan mode)
-python3 farm.py --mode exitip
-
-# Batasi sumber tertentu saja
-python3 farm.py --limit-sources monosans,proxyscrape-http
+./run.sh                    # menu interaktif
+python3 farm.py --dry-run   # langsung dry-run
+python3 farm.py             # langsung farm penuh
+python3 reorder.py          # langsung reorder
 ```
 
-Setiap yang jalan menulis laporan ke `reports/` dan daftar hidup ke `data/`.
+## Apa yang bot ini perlakukan sebagai suci
 
-## Sumber (10, sudah diverifikasi hidup)
+**vercel dan cloudflare tidak pernah disentuh.** Keduanya adalah relay yang kamu
+deploy sendiri, bukan hasil farm. Perlindungannya tiga lapis:
 
-| id | sumber | parser |
-|---|---|---|
-| `monosans` | github.com/monosans/proxy-list | JSON + metadata |
-| `geonode` | proxylist.geonode.com | JSON + metadata |
-| `proxyscrape-{http,socks5}` | api.proxyscrape.com | text |
-| `proxifly-{http,socks5}` | github.com/proxifly/free-proxy-list | text |
-| `thespeedx-{http,socks4,socks5}` | github.com/TheSpeedX/PROXY-List | text |
-| `clarketm` | github.com/clarketm/proxy-list | text |
+1. `config.toml [scope]` — hanya `type=http` yang boleh recheck/prune
+2. `src/db.py` — `order_rows()` hanya menyentuh type yang disebut di `[order].groups`
+3. `farm.py` — bandingkan `updatedAt` vercel/cloudflare sebelum dan sesudah;
+   **kalau satu saja berubah, run gagal keras** (`RANGKAP MELANGAR`)
 
-Menambah sumber = tambah entri di `sources.json`, tanpa ubah kode.
+Baru saja: selama pengembangan, skrip sekali menggeser blok custom ke bawah.
+Bug itu ketangkap lapisan ke-3 — karena itu lapisan itu dibuat lebih dulu.
 
-## Pipeline
+## Inti alur
 
 ```
-fetch (10 sumber, paralel)  →  dedup  →  uji  →  filter  →  inject  →  laporan
+backup DB  →  fetch 10 sumber  →  dedup
+     →  recheck baris http lama  →  mati? strike++
+     →  grace 2 strike baru dibuang  →  uji kandidat baru  →  yang lolos masuk
+     →  reorder (custom → vercel → cloudflare)  →  laporan
 ```
 
-Hasil run terakhir (8.000 kandidat): **3.409 hidup (42,6%)** dalam ±77 detik.
-Sumber paling melimpah justru paling buruk — `proxifly-socks5` menyumbang kontribusi
-hidup terendah per kandidat; `monosans` yang kecil paling rajin (38% hidup).
+Prune cuma milik tool (baris bertanda `importedSource`), jadi 335 custom
+pertamamu tidak ikut terbawa. Kalau suatu saat kamu bind koneksi ke suatu
+proxy, bot akan **lewatkan** baris itu — 9router akan menolak hapus baris
+yang sedang dipakai (HTTP 409), dan bot lebih baik jujur daripada memaksa.
 
-## Mode uji
+## Sumber (10, terverifikasi hidup)
 
-| mode | apa yang dilakukan | kapan dipakai |
-|---|---|---|
-| `tcp` | cek koneksi TCP saja. Tidak mengirim data apa pun ke luar. | default: memilah ribuan kandidat cepat |
-| `exitip` | cek TCP + exit IP + **tolak yang membocorkan IP lokal** | untuk menguji kebocoran |
+`monosans` · `geonode` · `proxyscrape` (http+socks5) · `proxifly` (http+socks5)
+· `TheSpeedX` (http+socks4+socks5) · `clarketm`
 
-Mode `exitip` sengaja menolak proxy yang exit IP-nya sama dengan IP mesin kamu:
-proxy seperti itu tidak memberi harga apa pun dan hanya menambah hop.
+Tambah/keluarkan sumber = edit `sources.json`, tanpa sentuh kode.
 
-## Soal proxy SOCKS
+## Soal pengujian
 
-9router hanya menerima lima nilai `type` — `http`, `vercel`, `cloudflare`, `deno`,
-`netlify`; nilai lain dilempar paksa menjadi `http` oleh server. Karena itu farm
-menulis semuanya sebagai `type: "http"` dan menyimpan protokol asalnya di
-`importedProto` (nama file menjadi `farm-socks5-…`, `farm-http-…`, dsb). URL
-`socks5://` sendiri tetap utuh dan memang didukung undici, jadi proxy socks5
-tetap bisa dipakai — yang dibatasi hanya labelnya.
+Dua tahap:
 
-## Urutan tampilan
+- **TCP connect** — murah, tak mengirim data ke mana pun. Memilah banyak kandidat.
+- **Uji nyata** (exit-IP) — lewati proxy, ambil IP publik dari endpoint netral.
 
-9router mengurutkan daftar proxy `ORDER BY updatedAt DESC`. `farm.py` menyusun:
+Dua hal yang ditemukan lewat debugging dan kenaikan menjadi aturan:
 
-```
-custom (type=http)  →  vercel  →  cloudflare
-```
+1. **Endpoint uji harus HTTP, bukan HTTPS.** Proxy HTTP biasa tidak bisa
+   melakukan CONNECT TLS, jadi HTTPS selalu gagal `WRONG_VERSION_NUMBER`
+   walau proxynya sehat.
+2. **`asyncio.wait_for` wajib membungkus request httpx.** Timeout milik httpx
+   tidak membatasi handshake SOCKS5 — satu proxy yang menggantung bisa
+   menahan sesi berjam-jam. Tanpa `wait_for`, 5.187 baris tidak pernah tuntas;
+   dengannya, 1,4 menit.
 
-Tiap baris dapat stempel unik yang mundur 1 ms, jadi urutannya deterministik
-(tanpa tie), dan baseline-nya diambil dari `updatedAt` teratas yang sudah ada —
-bukan jam dinding, supaya tidak rusak akibat perbedaan zona waktu.
+Proxy yang exit-IP-nya sama dengan IP mesin kamu ditolak: proxy itu tak
+memberi harga apa pun dan hanya menambah hop.
 
-## Keamanan
+**socks4 tidak bisa diuji** di sini — httpx tidak mengenali scheme-nya, jadi
+baris socks4 hanya lolos berdasarkan TCP dan akan gagal saat dipakai.
 
-- Cadangan otomatis `backups/pre-farm-*/` sebelum sesi inject, dirotasi (10 terakhir).
-- Tulis DB lewat `BEGIN IMMEDIATE` + `busy_timeout=60s`; 9router **tidak perlu dihentikan**.
-- Mode `tcp` tidak mengirim data ke mana pun; mode `exitip` hanya menyentuh
-  endpoint netral `api.ipify.org`.
-- `integrity_check` dijalankan setelah setiap inject dan dicatat di laporan.
+Proxy SOCKS5 diuji sungguhan. `socksio` dibutuhkan dan sudah diletakkan di
+`.pylibs/` (bukan di Python sistem, karena PEP 668 memblokir pip di distro ini).
+
+## Tipe proxy di 9router
+
+9router hanya menerima lima nilai `type`: `http`, `vercel`, `cloudflare`,
+`deno`, `netlify`; nilai lain dilempar server jadi `http`. Karena itu bot
+menulis semuanya sebagai `type: "http"` dan protokol aslinya disimpan di
+`importedProto` (nama barisnya jadi `farm-socks5-…`, `farm-http-…`, dst.).
+URL `socks5://` sendiri utuh dan memang didukung undici.
 
 ## File
 
 ```
-farm.py           orchestrator CLI
-sources.json      daftar sumber (10)
-config.toml       batas konkurensi, mode uji, path DB, retensi backup
-src/fetch.py      fetch + normalisasi + dedup
-src/testers.py    engine uji (tcp / exitip)
-src/injected.py   penulis DB (transaksi, urutan)
-src/report.py     laporan JSON + Markdown
-src/util.py       validasi endpoint (host:port)
+run.sh             menu interaktif (dipakai shortcut Desktop)
+farm.py            orchestrator: farm → recheck → prune → inject → reorder
+reorder.py         susun ulang tampilan saja
+sources.json       daftar 10 sumber
+config.toml        batas konkurensi, mode uji, path DB, retensi backup, scope
+src/fetch.py       fetch + normalisasi + dedup
+src/testers.py     engine uji (TCP + exit-IP)
+src/db.py          penulis DB (transaksi, rangkap, urutan)
+src/report.py      laporan JSON + Markdown
+src/util.py        validasi endpoint (host:port)
+.pylibs/           socksio (lokal, tak menyentuh sistem)
 ```
+
+Cadangan DB diambil sebelum setiap run ke `backups/pre-run-*` (10 terakhir).
+Integritas DB diperiksa di akhir tiap run dan dicatat di laporan.
