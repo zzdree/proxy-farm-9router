@@ -1,0 +1,75 @@
+{
+  "$comment": "Sumber proxy publik. Setiap entri punya id, parser, url, dan enabled. Protokol dipakai sebagai hint bila sumber tidak menyebutkannya.",
+  "sources": [
+    {
+      "id": "monosans",
+      "parser": "monosans_json",
+      "url": "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies.json",
+      "enabled": true,
+      "note": "Re-check per jam, bawaan timeout + ASN + geolokasi."
+    },
+    {
+      "id": "geonode",
+      "parser": "geonode_json",
+      "url": "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc",
+      "enabled": true,
+      "note": "JSON bermetadata; protocols[] menentukan protokol tiap baris."
+    },
+    {
+      "id": "proxyscrape-http",
+      "parser": "text_ipport",
+      "url": "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&protocol=http&proxy_format=ipport&format=text",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "proxyscrape-socks5",
+      "parser": "text_ipport",
+      "url": "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&protocol=socks5&proxy_format=ipport&format=text",
+      "protocol": "socks5",
+      "enabled": true
+    },
+    {
+      "id": "proxifly-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "proxifly-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/socks5/data.txt",
+      "protocol": "socks5",
+      "enabled": true
+    },
+    {
+      "id": "thespeedx-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "thespeedx-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+      "protocol": "socks5",
+      "enabled": true
+    },
+    {
+      "id": "thespeedx-socks4",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
+      "protocol": "socks4",
+      "enabled": true
+    },
+    {
+      "id": "clarketm",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
+      "enabled": true,
+      "note": "Protokol tidak disebut; parser inferensi dari baris."
+    }
+  ]
+}

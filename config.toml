@@ -1,0 +1,23 @@
+[database]
+path = "/home/zzdree/.9router/db/data.sqlite"
+backup_dir = "backups"
+keep_backups = 10
+
+[farm]
+# Batas aman supaya satu sesi tak menarik seluruh internet.
+max_candidates = 8000
+# Kandidat yang lolos dedup sebelum diuji.
+concurrency = 250
+connect_timeout = 4.0
+# Hentikan farm kalau sumber hidup kurang dari ini (0 = tak ada ambang).
+min_sources_alive = 1
+
+[test]
+# "tcp" = cek koneksi TCP saja: cepat, tak mengirim data ke mana pun.
+# "exitip" = akan diimplementasikan: cek exit IP + kebocoran.
+mode = "tcp"
+
+[order]
+# Semua hasil farm bertipe "http" dan harus tampil paling atas
+# (9router mengurutkan proxyPools oleh updatedAt menurun).
+keep_custom_on_top = true
