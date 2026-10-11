@@ -1,4 +1,4 @@
-# proxy-farm
+# proxy-farm-9router
 
 Bot satu klik: kumpulkan proxy publik dari 10 sumber, **recheck** yang sudah
 ada di DB 9router, **buang yang mati**, naikkan yang hidup, dan rapikan

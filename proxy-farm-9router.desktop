@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Proxy Farm 9Router
+Comment=Farm proxy publik, recheck DB 9router, buang yang mati, inject yang hidup
+Exec=/home/zzdree/ANDREAS/proxy-farm-9router/run.sh
+Icon=network-wired
+Terminal=true
+Categories=Network;Utility;
+StartupNotify=false
+Path=/home/zzdree/ANDREAS/proxy-farm-9router

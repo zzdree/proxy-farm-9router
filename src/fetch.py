@@ -134,7 +134,7 @@ async def gather(sources: list[dict], max_candidates: int, concurrency: int) -> 
     print("  [1] FETCH kandidat:")
     limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)
     async with httpx.AsyncClient(
-        limits=limits, headers={"User-Agent": "Mozilla/5.0 zzproxy-farm/1.0"}
+        limits=limits, headers={"User-Agent": "Mozilla/5.0 proxy-farm-9router/2.0"}
     ) as client:
         results = await asyncio.gather(
             *[_fetch_one(client, s) for s in sources if s.get("enabled", True)],

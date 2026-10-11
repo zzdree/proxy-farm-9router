@@ -1,4 +1,4 @@
-# proxy-farm — konfigurasi bot
+# proxy-farm-9router — konfigurasi bot
 
 [database]
 path = "/home/zzdree/.9router/db/data.sqlite"

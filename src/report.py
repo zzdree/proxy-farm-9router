@@ -25,7 +25,7 @@ def write_reports(outdir: str, payload: dict, stamp: str) -> tuple[str, str]:
     s = payload["summary"]
 
     lines = [
-        f"# proxy-farm — {stamp}",
+        f"# proxy-farm-9router — {stamp}",
         "",
         "## Ringkasan",
         "",

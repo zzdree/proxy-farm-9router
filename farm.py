@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""proxy-farm — bot: farm proxy publik, recheck yang sudah ada, bersihkan yang
+"""proxy-farm-9router — bot: farm proxy publik, recheck yang sudah ada, bersihkan yang
 mati, dan suntik yang hidup ke DB 9router. Semua dalam satu klik.
 
 Peringatan: proxy publik berarti operatornya bisa membaca lalu lintas yang
@@ -117,7 +117,7 @@ async def run(args) -> int:
         sources = [s for s in sources if s["id"] in keep]
 
     print("=" * 66)
-    print(f"  proxy-farm  |  {len(sources)} sumber  |  mode: {mode}")
+    print(f"  proxy-farm-9router  |  {len(sources)} sumber  |  mode: {mode}")
     print(f"  aman: {', '.join(scope['recheck_types'])} boleh disentuh; "
           f"vercel/cloudflare READ-ONLY")
     print("=" * 66)
@@ -373,7 +373,7 @@ async def run(args) -> int:
 
 def main():
     p = argparse.ArgumentParser(
-        description="proxy-farm: farm proxy publik, recheck, bersihkan, inject ke 9router"
+        description="proxy-farm-9router: farm proxy publik, recheck, bersihkan, inject ke 9router"
     )
     p.add_argument("--dry-run", action="store_true",
                    help="uji semuanya, jangan tulis ke DB")

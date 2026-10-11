@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# proxy-farm — jalankan dengan satu klik. Jendela terminal tetap terbuka
+# proxy-farm-9router — jalankan dengan satu klik. Jendela terminal tetap terbuka
 # sampai kamu tekan Enter, supaya hasil run bisa dibaca dulu.
 set -uo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
