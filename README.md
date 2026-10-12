@@ -8,23 +8,20 @@ tampilannya.
 > melewatinya. Jangan mengarahkannya ke request yang membawa API key provider,
 > token, atau isi prompt skripsi.
 
-## Pakai (1 klik)
+## Cara Pakai (Benar-benar 1 Klik)
 
-Ada ikon **Proxy Farm** di Desktop. Klik ganda → pilih menu:
+Tinggal **klik ganda** ikon **Proxy Farm 9Router** di Desktop:
+- Langsung jalan otomatis tanpa perlu pilih-pilih menu.
+- Recheck DB ➔ bersihkan proxy mati ➔ ambil proxy fresh dari 10 repo ➔ uji HTTPS ➔ masukkan ke 9router.
+- Menampilkan progres & ringkasan hijau saat selesai, lalu jendela menutup otomatis.
 
-| pilih | apa yang terjadi |
-|---|---|
-| **1** | farm penuh — recheck semua baris lama, uji kandidat baru, buang yang mati, inject yang hidup |
-| **2** | dry-run — jalankan semua uji, DB **tidak disentuh**. Buat lihat hasil sebelum berkomitmen |
-| **3** | cuma reorder — susun tampilan di 9router tanpa farm apa pun |
-
-Atau dari terminal:
+Untuk penggunaan manual / debug via terminal:
 
 ```bash
-./run.sh                    # menu interaktif
-python3 farm.py --dry-run   # langsung dry-run
-python3 farm.py             # langsung farm penuh
-python3 reorder.py          # langsung reorder
+./run.sh                    # sama seperti klik ganda (langsung sync)
+python3 farm.py --dry-run   # uji saja tanpa menyentuh database
+python3 verify_9router.py   # uji sampel proxy aktif ke endpoint AI OpenRouter
+python3 reorder.py          # rapikan urutan tampilan di 9router
 ```
 
 ## Apa yang bot ini perlakukan sebagai suci
