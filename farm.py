@@ -162,7 +162,9 @@ async def run(args) -> int:
         sem = asyncio.Semaphore(farm_cfg.get("concurrency", 250))
         tcp_to = farm_cfg.get("connect_timeout", 4.0)
         deep_to = farm_cfg.get("deep_test_timeout", 6.0)
-        endpoints = farm_cfg.get("exit_ip_endpoints", ["https://api.ipify.org"])
+        endpoints = farm_cfg.get(
+            "exit_ip_endpoints", ["https://api.ipify.org", "https://icanhazip.com"]
+        )
         deep_n = farm_cfg.get("deep_test_top_n", 800)
 
         async def probe_row(r):

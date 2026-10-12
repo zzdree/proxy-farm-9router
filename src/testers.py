@@ -1,17 +1,28 @@
-"""Engine pengujian proxy: tahap murah (TCP) dan tahap mahal (exit-IP).
+"""Engine pengujian proxy.
 
-Tahap mahal menggunakan httpx dengan proxy nyata, jadi socks5 benar-benar
-diuji dengan SOCKS-handshake — bukan cuma konek TCP. socksio dibutuhkan
-untuk itu dan sudah diletakkan di .pylibs (lihat bootstrap di farm.py).
+Tahap 1: TCP probe (cepat, memilah host mati dalam milidetik tanpa kirim data).
+Tahap 2: Live HTTPS probe ke https://api.ipify.org (fallback https://icanhazip.com).
+         - Menguji kemampuan tunneling HTTPS CONNECT (kebutuhan mutlak 9router).
+         - Validasi respons adalah IP valid menggunakan ipaddress (menolak HTML / error Cloudflare).
+         - Anti-leak check (exit_ip != local_ip).
+         - Timeout dibatasi ketat dengan asyncio.wait_for untuk mencegah socket gantung.
 """
 
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import time
 from dataclasses import dataclass
 
 import httpx
+
+_HTTPX_SCHEMES = {"http", "https", "socks5"}
+
+_ENDPOINTS = [
+    "https://api.ipify.org",
+    "https://icanhazip.com",
+]
 
 
 @dataclass
@@ -32,12 +43,21 @@ class Verdict:
         }
 
 
-async def tcp_probe(host: str, port: int, timeout: float) -> Verdict:
-    """Cek paling murah: bisa TCP connect atau tidak. Tidak kirim data apa pun.
+async def _get_via_proxy(proxy_url: str, url: str, timeout: float):
+    # wait_for pembungkus eksternal itu WAJIB: timeout httpx tidak
+    # membatasi handshake SOCKS5, sehingga proxy yang menggantung bisa
+    # menahan sesi berjam-jam.
+    async def _fetch():
+        async with httpx.AsyncClient(
+            proxy=proxy_url, timeout=timeout, trust_env=False, verify=False
+        ) as client:
+            return await client.get(url)
 
-    Dipungkus wait_for karena timeout open_connection saja belum cukup:
-    socket bisa terkunci di tahap resolve/read pada jaringan bermasalah.
-    """
+    return await asyncio.wait_for(_fetch(), timeout=timeout + 0.5)
+
+
+async def tcp_probe(host: str, port: int, timeout: float) -> Verdict:
+    """Tahap murah: bisa TCP connect. Tidak mengirim data ke mana pun."""
     t0 = time.monotonic()
     try:
         reader, writer = await asyncio.wait_for(
@@ -60,69 +80,77 @@ async def tcp_probe(host: str, port: int, timeout: float) -> Verdict:
     return Verdict(True, latency_ms=int((time.monotonic() - t0) * 1000))
 
 
-_HTTPX_SCHEMES = {"http", "https", "socks5"}
-
-
 async def live_probe(
-    proxy_url: str, endpoints: list[str], timeout: float, local_ip: str | None
+    proxy_url: str,
+    endpoints: list[str] | None = None,
+    timeout: float = 5.0,
+    local_ip: str | None = None,
 ) -> Verdict:
-    """Uji nyata: lewati proxy, ambil IP publik dari endpoint netral.
+    """Uji nyata HTTPS proxy.
 
-    Endpoint memakai HTTP (bukan HTTPS) karena proxy HTTP biasa tidak bisa
-    melakukan CONNECT TLS — HTTPS akan gagal WRONG_VERSION_NUMBER walau
-    proxynya sehat. Hanya endpoint yang mengembalikan IP yang dikontak: tak
-    ada kredensial, header kustom, atau konten apa pun yang dikirim lewat
-    proxy.
-
-    socks4 tidak bisa diuji di sini: httpx tidak mengenali scheme-nya.
-    Pemanggil harus menanganinya lebih dulu.
+    9router membutuhkan HTTPS tunnel untuk berkomunikasi dengan upstream AI API.
+    Proxy harus berhasil melakukan CONNECT TLS dan mengembalikan exit IP yang sah.
     """
     scheme = proxy_url.split("://", 1)[0]
     if scheme not in _HTTPX_SCHEMES:
         return Verdict(False, reason=f"scheme_{scheme}_tak_bisa_diuji_httpx")
-    last_err = ""
-    for ep in endpoints:
-        try:
-            # wait_for pembungkus eksternal itu WAJIB: timeout milik httpx
-            # sendiri tidak membatasi handshake SOCKS5, sehingga proxy yang
-            # menggantung bisa menahan sesi berjam-jam. Tanpa batas ini,
-            # recheck ribuan baris tidak pernah tuntas.
-            async def _fetch():
-                async with httpx.AsyncClient(
-                    proxy=proxy_url, timeout=timeout, trust_env=False, verify=False
-                ) as client:
-                    return await client.get(ep)
 
-            r = await asyncio.wait_for(_fetch(), timeout=timeout + 0.5)
-            if r.status_code != 200:
-                last_err = f"status:{r.status_code}"
-                continue
-            exit_ip = r.text.strip()
-            if not exit_ip:
-                last_err = "empty_body"
-                continue
-            leak = bool(local_ip and exit_ip == local_ip)
-            return Verdict(
-                alive=not leak,
-                exit_ip=exit_ip,
-                leak=leak,
-                reason="exit_ip == ip lokal (proxy tak menutupi)" if leak else "",
-            )
+    eps = endpoints or _ENDPOINTS
+    last_err = ""
+
+    for ep in eps:
+        t0 = time.monotonic()
+        try:
+            r = await _get_via_proxy(proxy_url, ep, timeout)
         except asyncio.TimeoutError:
-            return Verdict(False, reason="timeout")
+            last_err = "timeout"
+            continue
         except Exception as exc:
-            last_err = f"{type(exc).__name__}:{str(exc)[:40]}"
+            last_err = f"{type(exc).__name__}"
+            continue
+
+        if r.status_code != 200:
+            last_err = f"status:{r.status_code}"
+            continue
+
+        body = (r.text or "").strip()
+        try:
+            ip_obj = ipaddress.ip_address(body)
+            exit_ip = str(ip_obj)
+        except ValueError:
+            last_err = f"non_ip_body:{body[:30]}"
+            continue
+
+        leak = bool(local_ip and exit_ip == local_ip)
+        if leak:
+            return Verdict(
+                False,
+                exit_ip=exit_ip,
+                leak=True,
+                reason="exit_ip == ip lokal (proxy bocor)",
+            )
+
+        latency_ms = int((time.monotonic() - t0) * 1000)
+        return Verdict(
+            True,
+            exit_ip=exit_ip,
+            latency_ms=latency_ms,
+            leak=False,
+            reason="",
+        )
+
     return Verdict(False, reason=last_err or "no_endpoint_ok")
 
 
 async def deep_probe(
-    proxy_url: str, endpoints: list[str], tcp_timeout: float, deep_timeout: float,
-    local_ip: str | None,
+    proxy_url: str, tcp_timeout: float, deep_timeout: float, local_ip: str | None
 ) -> Verdict:
-    """TCP lebih dulu (murah). Kalau lolos dan proxy termasuk kandidat tercepat,
-    naik ke uji exit-IP."""
+    """TCP dulu (murah); kalau lolos, naik ke uji jalur HTTPS sungguhan."""
     host, _, port = proxy_url.rpartition("://")[2].rpartition(":")
-    tcp = await tcp_probe(host, int(port), tcp_timeout)
+    try:
+        tcp = await tcp_probe(host, int(port), tcp_timeout)
+    except ValueError:
+        return Verdict(False, reason="url_tak_terbaca")
     if not tcp.alive:
         return tcp
-    return await live_probe(proxy_url, endpoints, deep_timeout, local_ip)
+    return await live_probe(proxy_url, None, deep_timeout, local_ip)

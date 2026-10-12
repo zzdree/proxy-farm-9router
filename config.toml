@@ -10,27 +10,23 @@ max_candidates = 8000
 concurrency = 250
 connect_timeout = 4.0
 
-# Uji satu proxy sungguhan. Endpoint memakai HTTP, bukan HTTPS: proxy HTTP
-# biasa tidak bisa melakukan CONNECT TLS, jadi HTTPS selalu gagal dengan
-# WRONG_VERSION_NUMBER walau proxynya sehat.
-#
-# Cuma SATU endpoint yang dipakai. Setiap proxy yang mati akan habis
-# timeout penuh per endpoint, jadi 3 endpoint berarti proxy mati menelan
-# 3x waktu — itu yang membuat recheck ribuan baris jadi berjam-jam.
-# Satu endpoint cukup: kalau yang ini tidak bisa dihubungi, proxy sudah
-# tidak layak.
-exit_ip_endpoints = ["http://api.ipify.org"]
-# Berapa proxy tercepat yang diuji mendalam (exit-IP). Membatasi beban
-# ke endpoint uji dan mengganti uji mendalam dengan uji TCP untuk sisanya.
+# Endpoint uji HTTPS nyata:
+# 9router membutuhkan tunneling HTTPS (CONNECT) untuk berkomunikasi dengan
+# upstream AI API (Google Gemini, OpenRouter, Kilocode, dll).
+# Proxy yang berhasil mengembalikan IPv4 dari endpoint ini terbukti:
+#  1. Mampu melakukan HTTPS tunnel (TLS CONNECT).
+#  2. Tidak mengembalikan HTML error / Cloudflare 403 palsu.
+#  3. Tidak membocorkan IP lokal mesin.
+exit_ip_endpoints = ["https://api.ipify.org", "https://icanhazip.com"]
 deep_test_top_n = 800
-deep_test_timeout = 6.0
+deep_test_timeout = 5.0
 
-# Proxy yang gagal uji: beri tenggat (strike) sebelum dihapus, karena
-# proxy gratis memang flaky. 2 = salah pada 2 run berturut-turut baru dibuang.
+# Proxy yang gagal uji: diberi tenggat (strike) sebelum dihapus.
+# 2 = gagal 2x berturut-turut baru dibuang dari DB.
 grace_strikes = 2
 
 [test]
-mode = "deep"          # deep = TCP + exit-IP (untuk tercepat); tcp = TCP saja
+mode = "deep"
 
 [scope]
 # RUANG AMAN: vercel & cloudflare TIDAK PERNAH disentuh (read-only).
@@ -38,9 +34,9 @@ mode = "deep"          # deep = TCP + exit-IP (untuk tercepat); tcp = TCP saja
 recheck_types = ["http"]
 prune_types = ["http"]
 # Hanya baris bertanda `importedSource` (milik tool) yang boleh dihapus.
-# Baris custom pertamamu yang tak bertanda itu dipertahankan.
+# Baris custom awal yang tak bertanda itu dipertahankan.
 only_prune_owned = true
 
 [order]
-# Susunan daftar di dashboard: custom (paling atas) -> vercel -> cloudflare
+# Susunan daftar di dashboard 9router: custom (paling atas) -> vercel -> cloudflare
 groups = ["http", "vercel", "cloudflare"]

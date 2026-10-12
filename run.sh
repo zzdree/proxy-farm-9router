@@ -18,14 +18,16 @@ echo "${C_RST}"
 echo "  1) Farm penuh   (recheck + farm baru + bersihkan mati)"
 echo "  2) Dry-run      (uji semuanya, DB TIDAK diubah)"
 echo "  3) Cuma reorder (urutkan tampilan di 9router)"
-echo "  4) Keluar"
+echo "  4) Uji proxy lewat 9router (bukti bisa dipakai, bukan cuma 'hidup')"
+echo "  5) Keluar"
 echo
-read -rp "  Pilih [1-4]: " pilihan
+read -rp "  Pilih [1-5]: " pilihan
 
 case "$pilihan" in
   1) CMD=(python3 farm.py) ;;
   2) CMD=(python3 farm.py --dry-run) ;;
   3) CMD=(python3 reorder.py) ;;
+  4) CMD=(python3 verify_9router.py -n 30 --active-only) ;;
   *) echo "Keluar."; sleep 1; exit 0 ;;
 esac
 

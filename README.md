@@ -66,9 +66,9 @@ Tambah/keluarkan sumber = edit `sources.json`, tanpa sentuh kode.
 Dua tahap:
 
 - **TCP connect** — murah, tak mengirim data ke mana pun. Memilah banyak kandidat.
-- **Uji nyata** (exit-IP) — lewati proxy, ambil IP publik dari endpoint netral.
+- **Uji nyata** — lewati proxy, ambil IP publik dari endpoint netral.
 
-Dua hal yang ditemukan lewat debugging dan kenaikan menjadi aturan:
+Tiga hal yang ditemukan lewat debugging dan naik pangkat jadi aturan:
 
 1. **Endpoint uji harus HTTP, bukan HTTPS.** Proxy HTTP biasa tidak bisa
    melakukan CONNECT TLS, jadi HTTPS selalu gagal `WRONG_VERSION_NUMBER`
@@ -77,6 +77,19 @@ Dua hal yang ditemukan lewat debugging dan kenaikan menjadi aturan:
    tidak membatasi handshake SOCKS5 — satu proxy yang menggantung bisa
    menahan sesi berjam-jam. Tanpa `wait_for`, 5.187 baris tidak pernah tuntas;
    dengannya, 1,4 menit.
+3. **"Bisa balas IP" BUKAN bukti proxy sehat — ini yang paling penting.**
+   Uji kelayakan harus menuntut **lebih dari satu host berbeda** yang berhasil.
+   Uji lapangan: 38 dari 40 proxy "teratas" yang tercatat hidup ternyata palsu —
+   cuma bisa menjangkau satu tujuan, lalu mengembalikan halaman blokir
+   Cloudflare (`error code: 1003`, header `CF-RAY`) untuk host lain. Proxy
+   begitu tampak hidup sepenuhnya kalau cuma diuji satu endpoint. Itu sebabya
+   `src/testers.py` menolak proxy yang `hosts_ok < 2` dengan alasan
+   `hanya 1 host ok — proxy palsu?`.
+
+Konsekuensinya: jumlah "aktif" yang dilaporkan ke DB jauh lebih sedikit daripada
+sebelumnya. Pada sampel 300 proxy bertanda aktif, hanya **116 (38,7%)** yang
+benar-benar bisa meneruskan ke dua host berbeda — dengan 112 exit IP unik.
+Itu angka jujur, bukan penurunan kualitas alat.
 
 Proxy yang exit-IP-nya sama dengan IP mesin kamu ditolak: proxy itu tak
 memberi harga apa pun dan hanya menambah hop.
