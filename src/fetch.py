@@ -141,16 +141,19 @@ async def gather(sources: list[dict], max_candidates: int, concurrency: int) -> 
             return_exceptions=True,
         )
 
+    # Ambil sampel berimbang (round-robin) dari setiap sumber supaya sumber
+    # raksasa (100k+) tidak mendominasi dan mengusir kandidat dari sumber lain.
+    source_buckets = [r for r in results if isinstance(r, list) and r]
     all_c: list[Candidate] = []
-    for r in results:
-        if isinstance(r, Exception):
-            print(f"    (sumber dilewati: {type(r).__name__})")
-            continue
-        all_c.extend(r)
+    max_len = max((len(b) for b in source_buckets), default=0)
+    for idx in range(max_len):
+        for b in source_buckets:
+            if idx < len(b):
+                all_c.append(b[idx])
 
     unique = _dedupe(all_c)
-    print(f"  [2] DEDUP: {len(all_c)} -> {len(unique)} unik")
+    print(f"  [2] DEDUP: {len(all_c):,} kandidat dari {len(source_buckets)} sumber -> {len(unique):,} unik")
     if max_candidates and len(unique) > max_candidates:
         unique = unique[:max_candidates]
-        print(f"  [2b] dibatasi max_candidates -> {len(unique)}")
+        print(f"  [2b] dibatasi max_candidates -> {len(unique):,}")
     return unique

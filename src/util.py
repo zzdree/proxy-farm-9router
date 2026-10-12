@@ -17,9 +17,10 @@ def parse_endpoint(token):
     if not isinstance(token, str):
         return None
     token = token.strip()
-    if token.count(":") != 1:
+    parts = token.split(":")
+    if len(parts) < 2:
         return None
-    host, _, port_s = token.partition(":")
+    host, port_s = parts[0], parts[1]
     if not port_s.isdigit():
         return None
     port = int(port_s)

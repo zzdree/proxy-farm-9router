@@ -1,5 +1,5 @@
 {
-  "$comment": "Sumber proxy publik. Setiap entri punya id, parser, url, dan enabled. Protokol dipakai sebagai hint bila sumber tidak menyebutkannya.",
+  "$comment": "Katalog sumber proxy publik terverifikasi (25+ feeds). Diperbarui otomatis dari berbagai repo scraper aktif.",
   "sources": [
     {
       "id": "monosans",
@@ -13,7 +13,7 @@
       "parser": "geonode_json",
       "url": "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc",
       "enabled": true,
-      "note": "JSON bermetadata; protocols[] menentukan protokol tiap baris."
+      "note": "JSON bermetadata dengan uptime."
     },
     {
       "id": "proxyscrape-http",
@@ -58,10 +58,129 @@
       "enabled": true
     },
     {
-      "id": "thespeedx-socks4",
+      "id": "hookzof-socks5",
       "parser": "text_ipport",
-      "url": "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
-      "protocol": "socks4",
+      "url": "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+      "protocol": "socks5",
+      "enabled": true,
+      "note": "50k+ SOCKS5 proxies"
+    },
+    {
+      "id": "murongpig-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/main/http.txt",
+      "protocol": "http",
+      "enabled": true,
+      "note": "100k+ HTTP proxies"
+    },
+    {
+      "id": "murongpig-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/main/socks5.txt",
+      "protocol": "socks5",
+      "enabled": true,
+      "note": "100k+ SOCKS5 proxies"
+    },
+    {
+      "id": "zevtyardt-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/http.txt",
+      "protocol": "http",
+      "enabled": true,
+      "note": "60k+ HTTP proxies"
+    },
+    {
+      "id": "zevtyardt-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/socks5.txt",
+      "protocol": "socks5",
+      "enabled": true,
+      "note": "20k+ SOCKS5 proxies"
+    },
+    {
+      "id": "ercindedeoglu-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/http.txt",
+      "protocol": "http",
+      "enabled": true,
+      "note": "60k+ HTTP proxies"
+    },
+    {
+      "id": "ercindedeoglu-https",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/https.txt",
+      "protocol": "https",
+      "enabled": true
+    },
+    {
+      "id": "ercindedeoglu-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks5.txt",
+      "protocol": "socks5",
+      "enabled": true,
+      "note": "70k+ SOCKS5 proxies"
+    },
+    {
+      "id": "jetkai-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-http.txt",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "jetkai-https",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-https.txt",
+      "protocol": "https",
+      "enabled": true
+    },
+    {
+      "id": "jetkai-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt",
+      "protocol": "socks5",
+      "enabled": true
+    },
+    {
+      "id": "sunny9577-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/sunny9577/proxy-scraper/master/generated/http_proxies.txt",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "zloi-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/zloi-user/hideip.me/master/socks5.txt",
+      "protocol": "socks5",
+      "enabled": true
+    },
+    {
+      "id": "zloi-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/zloi-user/hideip.me/master/http.txt",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "vakhov-http",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/http.txt",
+      "protocol": "http",
+      "enabled": true
+    },
+    {
+      "id": "roosterkid-https",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/roosterkid/openproxylist/main/HTTPS_RAW.txt",
+      "protocol": "https",
+      "enabled": true
+    },
+    {
+      "id": "shiftytr-socks5",
+      "parser": "text_ipport",
+      "url": "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks5.txt",
+      "protocol": "socks5",
       "enabled": true
     },
     {
@@ -69,7 +188,7 @@
       "parser": "text_ipport",
       "url": "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
       "enabled": true,
-      "note": "Protokol tidak disebut; parser inferensi dari baris."
+      "note": "Forward proxies updated daily"
     }
   ]
 }

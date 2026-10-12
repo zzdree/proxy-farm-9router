@@ -6,7 +6,7 @@ backup_dir = "backups"
 keep_backups = 10
 
 [farm]
-max_candidates = 8000
+max_candidates = 15000
 concurrency = 250
 connect_timeout = 4.0
 
