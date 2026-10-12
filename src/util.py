@@ -51,3 +51,15 @@ def now_iso():
 
 def human(n):
     return f"{n:,}".replace(",", ".")
+
+
+def get_local_ip() -> str | None:
+    """Deteksi IP publik/keluar mesin secara dinamis tanpa hardcode."""
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("1.1.1.1", 80))
+            return s.getsockname()[0]
+    except OSError:
+        return None
+

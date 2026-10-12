@@ -119,7 +119,7 @@ async def main_async(args) -> int:
     cfg = tomllib.load(open(os.path.join(HERE, "config.toml"), "rb"))
     db_path = cfg["database"]["path"]
 
-    local_ip = "114.12.15.166"
+    local_ip = util.get_local_ip()
 
     # Ambil proxy dari DB atau argument
     if args.urls:

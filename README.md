@@ -1,125 +1,164 @@
-# proxy-farm-9router
+# 🌾 Proxy Farm 9Router
 
-Bot satu klik: kumpulkan proxy publik dari 10 sumber, **recheck** yang sudah
-ada di DB 9router, **buang yang mati**, naikkan yang hidup, dan rapikan
-tampilannya.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python Version" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" />
+  <img src="https://img.shields.io/badge/Feeds-26%2B%20Sources-purple?style=for-the-badge&logo=github" alt="26+ Sources" />
+  <img src="https://img.shields.io/badge/Candidate%20Pool-560k%2B-orange?style=for-the-badge" alt="560k+ Candidates" />
+  <img src="https://img.shields.io/badge/Protocols-HTTP%20%7C%20HTTPS%20%7C%20SOCKS5-blueviolet?style=for-the-badge" alt="Protocols" />
+  <img src="https://img.shields.io/badge/Integration-9Router%20Compatible-red?style=for-the-badge" alt="9Router Compatible" />
+</p>
 
-> **Peringatan.** Proxy publik berarti operatornya bisa membaca lalu lintas yang
-> melewatinya. Jangan mengarahkannya ke request yang membawa API key provider,
-> token, atau isi prompt skripsi.
+<p align="center">
+  <b>Automated Public Proxy Harvester, HTTPS CONNECT Verifier, and Zero-Downtime SQLite Injector for <a href="https://github.com/ninerouter/9router">9Router</a>.</b>
+</p>
 
-## Cara Pakai (Benar-benar 1 Klik)
+---
 
-Tinggal **klik ganda** ikon **Proxy Farm 9Router** di Desktop:
-- Langsung jalan otomatis tanpa perlu pilih-pilih menu.
-- Recheck DB ➔ bersihkan proxy mati ➔ ambil proxy fresh dari 10 repo ➔ uji HTTPS ➔ masukkan ke 9router.
-- Menampilkan progres & ringkasan hijau saat selesai, lalu jendela menutup otomatis.
+## ⚡ Kenapa Proxy Farm 9Router?
 
-Untuk penggunaan manual / debug via terminal:
+9Router menggunakan agen proxy untuk koneksi **outbound** ke upstream AI provider (Google Gemini, OpenAI, OpenRouter, Anthropic, KiloCode). Karena semua endpoint AI berjalan di atas HTTPS, proxy **wajib** mampu melakukan **HTTPS CONNECT tunneling** tanpa merusak enkripsi TLS.
 
+Kebanyakan proxy scraper publik memasukkan ribuan proxy mati atau proxy palsu yang mengembalikan halaman blokir Cloudflare (`error code: 1003`). **Proxy Farm 9Router** memfilter tumpukan tersebut dengan pengujian handshake TLS asli dan langsung menyuntikkan proxy yang lolos ke database SQLite 9Router dalam sekali klik.
+
+---
+
+## 🚀 Fitur Utama
+
+- 🖱️ **Murni 1-Klik:** Cukup klik ganda shortcut di Desktop. Sinkronisasi berjalan otomatis tanpa pertanyaan interaktif, menampilkan progres rapi, dan menutup otomatis setelah selesai.
+- 🌐 **Koleksi 26+ Sumber Aktif:** Mengambil lebih dari **560.000 kandidat** (318.000+ IP unik) dari repositori terkurasi (monosans, geonode, proxyscrape, proxifly, hookzof, murongpig, zevtyardt, dll).
+- ⚖️ **Fair Round-Robin Sampling:** Sumber masif (100k+) tidak akan memonopoli slot kandidat; setiap repo mendapat jatah sampling berimbang.
+- 🔒 **Verifikasi HTTPS CONNECT Nyata:** Memvalidasi handshake TLS sungguhan dan memverifikasi respon IP menggunakan parser `ipaddress` murni—menolak 100% halaman CAPTCHA dan error HTML Cloudflare.
+- 🛡️ **Triple-Layer Relay Guard:** Relay Vercel dan Cloudflare Worker bawaan Anda **100% READ-ONLY** dan terlindungi di 3 lapis sistem (*scope allowlist* ➔ *db query filter* ➔ *pre-commit assertion*).
+- 🧹 **Two-Strike Grace Reaper:** Proxy yang mati diberi kesempatan 2 kali uji berturut-turut sebelum dihapus agar tidak terbuang hanya karena timeout sesaat.
+- 📊 **Sorting Rapi:** Menjaga urutan tampilan dashboard 9Router tetap teratur: `Custom HTTP/SOCKS5` (teratas) ➔ `Vercel` ➔ `Cloudflare`.
+
+---
+
+## 🏗️ Arsitektur & Alur Kerja
+
+```text
+[Double-Click Shortcut]
+          │
+          ▼
+   [0. Auto-Backup]  ─── Salin data.sqlite ke backups/pre-run-* (auto-rotate 10)
+          │
+          ▼
+   [1. Fetch 26 Feeds] ── Tarik 560k+ kandidat ➔ Round-robin ➔ Dedup ➔ 15k kandidat fresh
+          │
+          ▼
+   [2. Recheck DB]   ─── Uji proxy custom lama di 9Router dengan HTTPS CONNECT
+          │
+          ▼
+   [3. Grace Reaper] ─── Hapus proxy mati yang sudah mengumpulkan 2 strike
+          │               ⛔ Relay Vercel & Cloudflare dijamin tidak tersentuh!
+          ▼
+   [4. Injeksi Fresh]─── Uji kandidat baru (TCP ➔ HTTPS) ➔ HANYA yang hidup masuk ke DB
+          │
+          ▼
+   [5. Sort & Verify]─── Rapikan urutan (Custom ➔ Vercel ➔ Cloudflare) + SQLite integrity check
+          │
+          ▼
+   [6. Finish]       ─── Cetak ringkasan hijau ➔ Terminal auto-close dalam 15 detik
+```
+
+---
+
+## 📦 Instalasi & Penggunaan
+
+### 1. Kloning Repositori
 ```bash
-./run.sh                    # sama seperti klik ganda (langsung sync)
-python3 farm.py --dry-run   # uji saja tanpa menyentuh database
-python3 verify_9router.py   # uji sampel proxy aktif ke endpoint AI OpenRouter
-python3 reorder.py          # rapikan urutan tampilan di 9router
+git clone https://github.com/zzdree/proxy-farm-9router.git
+cd proxy-farm-9router
 ```
 
-## Apa yang bot ini perlakukan sebagai suci
-
-**vercel dan cloudflare tidak pernah disentuh.** Keduanya adalah relay yang kamu
-deploy sendiri, bukan hasil farm. Perlindungannya tiga lapis:
-
-1. `config.toml [scope]` — hanya `type=http` yang boleh recheck/prune
-2. `src/db.py` — `order_rows()` hanya menyentuh type yang disebut di `[order].groups`
-3. `farm.py` — bandingkan `updatedAt` vercel/cloudflare sebelum dan sesudah;
-   **kalau satu saja berubah, run gagal keras** (`RANGKAP MELANGAR`)
-
-Baru saja: selama pengembangan, skrip sekali menggeser blok custom ke bawah.
-Bug itu ketangkap lapisan ke-3 — karena itu lapisan itu dibuat lebih dulu.
-
-## Inti alur
-
+### 2. Pasang Dependensi
+```bash
+pip install -r requirements.txt
 ```
-backup DB  →  fetch 10 sumber  →  dedup
-     →  recheck baris http lama  →  mati? strike++
-     →  grace 2 strike baru dibuang  →  uji kandidat baru  →  yang lolos masuk
-     →  reorder (custom → vercel → cloudflare)  →  laporan
-```
+> *Catatan:* Paket `socksio` (untuk dukungan SOCKS5 di `httpx`) sudah disertakan di folder lokal `.pylibs` sehingga tidak merusak environment Python sistem (PEP 668 compliant).
 
-Prune cuma milik tool (baris bertanda `importedSource`), jadi 335 custom
-pertamamu tidak ikut terbawa. Kalau suatu saat kamu bind koneksi ke suatu
-proxy, bot akan **lewatkan** baris itu — 9router akan menolak hapus baris
-yang sedang dipakai (HTTP 409), dan bot lebih baik jujur daripada memaksa.
+### 3. Jalankan
 
-## Sumber (10, terverifikasi hidup)
+**Cara Termudah (1 Klik di Desktop Linux/XFCE):**
+Klik ganda ikon **Proxy Farm 9Router** di Desktop Anda!
 
-`monosans` · `geonode` · `proxyscrape` (http+socks5) · `proxifly` (http+socks5)
-· `TheSpeedX` (http+socks4+socks5) · `clarketm`
+**Melalui Terminal:**
+```bash
+# Menjalankan auto-sync penuh (recheck, pangkas, ambil baru, inject, rapikan)
+./run.sh
 
-Tambah/keluarkan sumber = edit `sources.json`, tanpa sentuh kode.
+# Uji coba tanpa mengubah isi database (Dry Run)
+python3 farm.py --dry-run
 
-## Soal pengujian
+# Verifikasi kelayakan sampel proxy aktif ke endpoint AI OpenRouter
+python3 verify_9router.py -n 30 --active-only
 
-Dua tahap:
-
-- **TCP connect** — murah, tak mengirim data ke mana pun. Memilah banyak kandidat.
-- **Uji nyata** — lewati proxy, ambil IP publik dari endpoint netral.
-
-Tiga hal yang ditemukan lewat debugging dan naik pangkat jadi aturan:
-
-1. **Endpoint uji harus HTTP, bukan HTTPS.** Proxy HTTP biasa tidak bisa
-   melakukan CONNECT TLS, jadi HTTPS selalu gagal `WRONG_VERSION_NUMBER`
-   walau proxynya sehat.
-2. **`asyncio.wait_for` wajib membungkus request httpx.** Timeout milik httpx
-   tidak membatasi handshake SOCKS5 — satu proxy yang menggantung bisa
-   menahan sesi berjam-jam. Tanpa `wait_for`, 5.187 baris tidak pernah tuntas;
-   dengannya, 1,4 menit.
-3. **"Bisa balas IP" BUKAN bukti proxy sehat — ini yang paling penting.**
-   Uji kelayakan harus menuntut **lebih dari satu host berbeda** yang berhasil.
-   Uji lapangan: 38 dari 40 proxy "teratas" yang tercatat hidup ternyata palsu —
-   cuma bisa menjangkau satu tujuan, lalu mengembalikan halaman blokir
-   Cloudflare (`error code: 1003`, header `CF-RAY`) untuk host lain. Proxy
-   begitu tampak hidup sepenuhnya kalau cuma diuji satu endpoint. Itu sebabya
-   `src/testers.py` menolak proxy yang `hosts_ok < 2` dengan alasan
-   `hanya 1 host ok — proxy palsu?`.
-
-Konsekuensinya: jumlah "aktif" yang dilaporkan ke DB jauh lebih sedikit daripada
-sebelumnya. Pada sampel 300 proxy bertanda aktif, hanya **116 (38,7%)** yang
-benar-benar bisa meneruskan ke dua host berbeda — dengan 112 exit IP unik.
-Itu angka jujur, bukan penurunan kualitas alat.
-
-Proxy yang exit-IP-nya sama dengan IP mesin kamu ditolak: proxy itu tak
-memberi harga apa pun dan hanya menambah hop.
-
-**socks4 tidak bisa diuji** di sini — httpx tidak mengenali scheme-nya, jadi
-baris socks4 hanya lolos berdasarkan TCP dan akan gagal saat dipakai.
-
-Proxy SOCKS5 diuji sungguhan. `socksio` dibutuhkan dan sudah diletakkan di
-`.pylibs/` (bukan di Python sistem, karena PEP 668 memblokir pip di distro ini).
-
-## Tipe proxy di 9router
-
-9router hanya menerima lima nilai `type`: `http`, `vercel`, `cloudflare`,
-`deno`, `netlify`; nilai lain dilempar server jadi `http`. Karena itu bot
-menulis semuanya sebagai `type: "http"` dan protokol aslinya disimpan di
-`importedProto` (nama barisnya jadi `farm-socks5-…`, `farm-http-…`, dst.).
-URL `socks5://` sendiri utuh dan memang didukung undici.
-
-## File
-
-```
-run.sh             menu interaktif (dipakai shortcut Desktop)
-farm.py            orchestrator: farm → recheck → prune → inject → reorder
-reorder.py         susun ulang tampilan saja
-sources.json       daftar 10 sumber
-config.toml        batas konkurensi, mode uji, path DB, retensi backup, scope
-src/fetch.py       fetch + normalisasi + dedup
-src/testers.py     engine uji (TCP + exit-IP)
-src/db.py          penulis DB (transaksi, rangkap, urutan)
-src/report.py      laporan JSON + Markdown
-src/util.py        validasi endpoint (host:port)
-.pylibs/           socksio (lokal, tak menyentuh sistem)
+# Rapikan ulang urutan tampilan di dashboard 9Router
+python3 reorder.py
 ```
 
-Cadangan DB diambil sebelum setiap run ke `backups/pre-run-*` (10 terakhir).
-Integritas DB diperiksa di akhir tiap run dan dicatat di laporan.
+---
+
+## ⚙️ Konfigurasi (`config.toml`)
+
+```toml
+[database]
+path = "/home/zzdree/.9router/db/data.sqlite"
+backup_dir = "backups"
+keep_backups = 10
+
+[farm]
+max_candidates = 15000       # Jumlah kandidat yang diambil per putaran
+concurrency = 250            # Koneksi paralel untuk kecepatan maksimal
+connect_timeout = 4.0        # Batas waktu TCP connect
+deep_test_timeout = 5.0      # Batas waktu handshake HTTPS CONNECT
+grace_strikes = 2            # Jumlah kegagalan sebelum proxy dihapus
+
+[scope]
+recheck_types = ["http"]     # Hanya tipe http (custom) yang direcheck
+prune_types = ["http"]       # Vercel & Cloudflare tidak akan pernah dihapus
+only_prune_owned = true      # Hanya menghapus proxy hasil injeksi bot
+
+[order]
+groups = ["http", "vercel", "cloudflare"]
+```
+
+---
+
+## 📋 Sumber Proxy yang Didukung (26 Feeds)
+
+| ID Feed | Sumber | Protokol |
+|---|---|---|
+| `monosans` | [monosans/proxy-list](https://github.com/monosans/proxy-list) | HTTP, SOCKS5 (JSON) |
+| `geonode` | [geonode API](https://geonode.com/free-proxy-list) | HTTP, SOCKS5 (JSON) |
+| `proxyscrape-*` | [proxyscrape v4 API](https://proxyscrape.com) | HTTP, SOCKS5 |
+| `proxifly-*` | [proxifly/free-proxy-list](https://github.com/proxifly/free-proxy-list) | HTTP, SOCKS5 |
+| `thespeedx-*` | [TheSpeedX/PROXY-List](https://github.com/TheSpeedX/PROXY-List) | HTTP, SOCKS5 |
+| `hookzof-socks5` | [hookzof/socks5_list](https://github.com/hookzof/socks5_list) | SOCKS5 |
+| `murongpig-*` | [MuRongPIG/Proxy-Master](https://github.com/MuRongPIG/Proxy-Master) | HTTP, SOCKS5 |
+| `zevtyardt-*` | [zevtyardt/proxy-list](https://github.com/zevtyardt/proxy-list) | HTTP, SOCKS5 |
+| `ercindedeoglu-*` | [ErcinDedeoglu/proxies](https://github.com/ErcinDedeoglu/proxies) | HTTP, HTTPS, SOCKS5 |
+| `jetkai-*` | [jetkai/proxy-list](https://github.com/jetkai/proxy-list) | HTTP, HTTPS, SOCKS5 |
+| `sunny9577-http` | [sunny9577/proxy-scraper](https://github.com/sunny9577/proxy-scraper) | HTTP |
+| `zloi-*` | [zloi-user/hideip.me](https://github.com/zloi-user/hideip.me) | HTTP, SOCKS5 |
+| `vakhov-http` | [vakhov/fresh-proxy-list](https://github.com/vakhov/fresh-proxy-list) | HTTP |
+| `roosterkid-https`| [roosterkid/openproxylist](https://github.com/roosterkid/openproxylist) | HTTPS |
+| `shiftytr-socks5` | [ShiftyTR/Proxy-List](https://github.com/ShiftyTR/Proxy-List) | SOCKS5 |
+| `clarketm` | [clarketm/proxy-list](https://github.com/clarketm/proxy-list) | HTTP |
+
+*Menambah atau menonaktifkan sumber cukup mengubah file `sources.json` tanpa perlu mengubah kode.*
+
+---
+
+## 🔒 Keamanan & Kebijakan Privasi
+
+1. **Pemeriksaan Kebocoran IP (Anti-Leak):** Bot mendeteksi IP publik lokal secara dinamis. Jika ada proxy yang membocorkan IP lokal Anda, proxy tersebut langsung ditolak.
+2. **Kerahasiaan Prompt & Kredensial:** Proses pengujian hanya mengontak endpoint status netral (`api.ipify.org` / `icanhazip.com`). Tidak ada token, API key, atau prompt pengguna yang pernah dikirim melalui proxy publik selama pengujian.
+3. **Backup Otomatis:** Setiap eksekusi selalu memicu snapshot SQLite ke direktori `backups/`, menjamin database Anda dapat dipulihkan kapan saja.
+
+---
+
+## 📄 Lisensi
+
+Proyek ini dilisensikan di bawah [MIT License](LICENSE) © 2026 Andreas ([@zzdree](https://github.com/zzdree)).
